@@ -4,13 +4,13 @@ import android.bluetooth.*;
 import android.content.Context;
 import android.util.Log;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 class BTLock extends BluetoothGattCallback {
 
     final private static String TAG = BTLock.class.getClass().getSimpleName();
+
+    private BTLock() { }
 
     final public static long SERVICE_UUID_MSD=0x11DB00000000L;
 //    final public static UUID SERVICE_UUID = new UUID(SERVICE_UUID_MSD, 0);
@@ -19,8 +19,8 @@ class BTLock extends BluetoothGattCallback {
 //    final public static UUID MASK_UUID = new UUID(MASK_UUID_MSD, 0);
 //    final public static ParcelUuid MASK_PARCEL_UUID = new ParcelUuid(MASK_UUID);
 
-    public abstract class BTLockCallback{
-        public abstract void onGattConnect();
+    public static abstract class BTLockCallback{
+        public abstract void onGattConnect(BluetoothGatt gatt);
     }
 
     private BluetoothDevice mDevice;
@@ -34,11 +34,18 @@ class BTLock extends BluetoothGattCallback {
     public BluetoothGatt connectGatt(Context context, BTLockCallback callback) throws Exception{
         mGatt = mDevice.connectGatt(context, false, this);
         if(null != mGatt){
-            callback.onGattConnect();
+            callback.onGattConnect(mGatt);
         } else {
             throw new Exception("Failed to connect the gatt.");
         }
         return mGatt;
+    }
+
+    public void close(){
+        mGatt.close();
+        mGatt = null;
+        mService = null;
+        mDevice = null;
     }
 
     public boolean setCharacteristicNotification(BluetoothGattCharacteristic characteristic, boolean enable){
@@ -56,7 +63,16 @@ class BTLock extends BluetoothGattCallback {
         return mService;
     }
 
-    public abstract class GeneralCallback{
+    public static final int IL_UNKNOWN = -1;
+    public static final int IL_FALSE = 0;
+    public static final int IL_TRUE = 1;
+    private int mIsLock = IL_UNKNOWN;
+    public int isLock(){
+        return mIsLock;
+    }
+
+    public static abstract class GeneralCallback{
+        public int result = BluetoothGatt.GATT_SUCCESS - 1;
         public abstract void callback(int status, BluetoothGattCharacteristic characteristic);
     }
     public static final int CB_CONNECTION_STATE_CHANGE = 0;
@@ -64,13 +80,15 @@ class BTLock extends BluetoothGattCallback {
     public static final int CB_CHAR_WRITE = 2;
     public static final int CB_CHAR_CHANGE = 3;
     public static final int CB_WRITE_COMPLETE = 4;
-    private static final int CB_COUNT = 5;
-    private ArrayList<?>[] callbackLists = {
-            new ArrayList<GeneralCallback>(),
-            new ArrayList<GeneralCallback>(),
-            new ArrayList<GeneralCallback>(),
-            new ArrayList<GeneralCallback>(),
-            new ArrayList<GeneralCallback>()
+    public static final int CB_IS_LOCK = 5;
+    private static final int CB_COUNT = 6;
+    private HashSet<?>[] callbackLists = {
+            new HashSet<GeneralCallback>(),
+            new HashSet<GeneralCallback>(),
+            new HashSet<GeneralCallback>(),
+            new HashSet<GeneralCallback>(),
+            new HashSet<GeneralCallback>(),
+            new HashSet<GeneralCallback>()
     };
 
     public void registerCallback(int index, GeneralCallback callback){
@@ -78,7 +96,15 @@ class BTLock extends BluetoothGattCallback {
             Log.e(TAG, "Callback index out of range.");
             return;
         }
-        ((ArrayList<GeneralCallback>)callbackLists[index]).add(callback);
+        ((HashSet<GeneralCallback>)callbackLists[index]).add(callback);
+    }
+
+    public void deregisterCallback(int index, GeneralCallback callback){
+        if(index<0 || index>=CB_COUNT){
+            Log.e(TAG, "Callback index out of range.");
+            return;
+        }
+        ((HashSet<GeneralCallback>)callbackLists[index]).remove(callback);
     }
 
 
@@ -98,7 +124,7 @@ class BTLock extends BluetoothGattCallback {
                                         int newState) {
         super.onConnectionStateChange(gatt, status, newState);
         for(Object cb : callbackLists[CB_CONNECTION_STATE_CHANGE]){
-            ((GeneralCallback)cb).callback(status, null);
+            ((GeneralCallback)cb).callback(newState, null);
         }
     }
 
@@ -112,16 +138,27 @@ class BTLock extends BluetoothGattCallback {
     @Override
     public void onServicesDiscovered(BluetoothGatt gatt, int status) {
         super.onServicesDiscovered(gatt, status);
+        if (mService != null) {
+            return;
+        }
         List<BluetoothGattService> list = mGatt.getServices();
         UUID uuid = null;
         for(BluetoothGattService service: list){
             uuid = service.getUuid();
             if((uuid.getMostSignificantBits() & MASK_UUID_MSD) == SERVICE_UUID_MSD){
                 break;
+            } else {
+                uuid = null;
             }
         }
         if(null != uuid){
             mService = mGatt.getService(uuid);
+            mIsLock = IL_TRUE;
+        } else {
+            mIsLock = IL_FALSE;
+        }
+        for(Object cb : callbackLists[CB_IS_LOCK]){
+            ((GeneralCallback)cb).callback(mIsLock, null);
         }
     }
 
@@ -190,5 +227,68 @@ class BTLock extends BluetoothGattCallback {
         for(Object cb : callbackLists[CB_WRITE_COMPLETE]){
             ((GeneralCallback)cb).callback(status, null);
         }
+    }
+
+    public synchronized boolean writeCharacteristic(BluetoothGattCharacteristic characteristic){
+        GeneralCallback cb = new GeneralCallback(){
+            @Override
+            public void callback(int status, BluetoothGattCharacteristic characteristic) {
+                result = status;
+                synchronized (BTLock.this) {
+                    BTLock.this.notify();
+                }
+            }
+        };
+        registerCallback(CB_WRITE_COMPLETE, cb);
+        boolean ret = mGatt.writeCharacteristic(characteristic);
+        if(ret){
+            ret = mGatt.executeReliableWrite();
+            if (ret) {
+                try {
+                    wait(3000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                    ret = false;
+                }
+                if (ret) {
+                    if (cb.result != BluetoothGatt.GATT_SUCCESS) {
+                        ret = false;
+                    }
+                }
+            }
+        }
+        deregisterCallback(CB_WRITE_COMPLETE, cb);
+        return ret;
+    }
+
+    public byte[] readCharacteristic(final BluetoothGattCharacteristic characteristic) throws Exception {
+        final Object lock = new Object();
+        GeneralCallback cb = new GeneralCallback() {
+            @Override
+            public void callback(int status, BluetoothGattCharacteristic c) {
+                if (status == BluetoothGatt.GATT_SUCCESS) {
+                    characteristic.setValue(c.getValue());
+                }
+                result = status;
+                synchronized (lock) {
+                    lock.notify();
+                }
+            }
+        };
+        registerCallback(CB_CHAR_READ, cb);
+        synchronized (lock){
+            if(mGatt.readCharacteristic(characteristic)) {
+                try {
+                    lock.wait(3000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        deregisterCallback(CB_CHAR_READ, cb);
+        if (cb.result != BluetoothGatt.GATT_SUCCESS) {
+            throw new Exception("Failed to read the characteristic.");
+        }
+        return characteristic.getValue();
     }
 }

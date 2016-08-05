@@ -78,13 +78,13 @@ public class DeviceManager {
         sFilter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
     }
 
-    public static boolean startDiscovery(Activity activity) {
-        activity.registerReceiver(sReceiver, sFilter);
+    public static boolean startDiscovery(Context context) {
+        context.registerReceiver(sReceiver, sFilter);
         return sAdapter.startDiscovery();
     }
-    public static boolean cancelDiscovery(Activity activity) {
+    public static boolean cancelDiscovery(Context context) {
         boolean ret = sAdapter.cancelDiscovery();
-        activity.unregisterReceiver(sReceiver);
+        context.unregisterReceiver(sReceiver);
         return ret;
     }
 }

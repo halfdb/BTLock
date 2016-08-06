@@ -9,11 +9,6 @@ import android.util.Log;
 
 public class BTLockManager {
     private static final String TAG = BTLockManager.class.getSimpleName();
-    private static BTLockManager instance = new BTLockManager();
-
-    public static BTLockManager getInstance() {
-        return instance;
-    }
 
     private BTLockManager() { }
 
@@ -86,11 +81,7 @@ public class BTLockManager {
         {
             return false;
         }
-        byte[] dataArray = new byte[Data.SIZE];
-        for (int i = 0; i < Data.SIZE; i++) {
-            dataArray[i] = data.get(i);
-        }
-        characteristic.setValue(dataArray);
+        characteristic.setValue(data.byteArray());
         return sLock.writeCharacteristic(characteristic);
     }
 

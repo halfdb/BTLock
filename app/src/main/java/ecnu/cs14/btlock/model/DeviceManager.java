@@ -1,6 +1,5 @@
 package ecnu.cs14.btlock.model;
 
-import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
@@ -14,10 +13,6 @@ import java.util.HashSet;
 public class DeviceManager {
     private static String TAG = DeviceManager.class.getSimpleName();
 
-    private static DeviceManager instance = new DeviceManager();
-    public static DeviceManager getInstance() {
-        return instance;
-    }
     private DeviceManager() { }
 
     private static BluetoothAdapter sAdapter = BluetoothAdapter.getDefaultAdapter();

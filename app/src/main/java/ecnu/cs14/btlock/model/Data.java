@@ -64,4 +64,12 @@ public class Data extends ArrayList<Byte> {
         }
     }
 
+    public byte[] byteArray() {
+        byte[] ret = new byte[SIZE];
+        for (int i = 0; i < SIZE; i++) {
+            ret[i] = get(i);
+        }
+        return ret;
+    }
+
 }

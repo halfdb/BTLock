@@ -3,6 +3,7 @@ package ecnu.cs14.btlock.model;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.support.annotation.Nullable;
 import android.util.Log;
@@ -14,57 +15,87 @@ public class BTLockManager {
 
     private static BTLock sLock = null;
 
-    private static boolean hasLock(){
+    public static boolean hasLock(){
         return (sLock != null);
     }
+
+    private static final BTLock.GeneralCallback sStateCallback = new BTLock.GeneralCallback() {
+        @Override
+        public void callback(int newState, BluetoothGattCharacteristic characteristic) {
+            switch (newState) {
+                case BluetoothProfile.STATE_DISCONNECTED:
+                    disconnectLock();
+                    break;
+            }
+        }
+    };
 
     public static void connectLock(BluetoothDevice device, Context context){
         if (hasLock()) {
             disconnectLock();
         }
+
         sLock = new BTLock(device);
-        try {
-            sLock.connectGatt(context, new BTLock.BTLockCallback() {
+        sLock.registerCallback(BTLock.CB_CONNECTION_STATE_CHANGE, sStateCallback);
+
+        final Object lock = new Object();
+
+        synchronized (lock) {
+            BTLock.GeneralCallback cb = new BTLock.GeneralCallback() {
                 @Override
-                public void onGattConnect(BluetoothGatt gatt) {
-                    gatt.discoverServices();
-                }
-            });
-        } catch (Exception e) {
-            e.printStackTrace();
-            Log.e(TAG, e.getMessage());
-        }
-        switch (sLock.isLock()){
-            case BTLock.IL_UNKNOWN:
-                sLock.registerCallback(BTLock.CB_IS_LOCK, new BTLock.GeneralCallback(){
-                    @Override
-                    public void callback(int status, BluetoothGattCharacteristic characteristic) {
-                        switch (status){
+                public void callback(int status, BluetoothGattCharacteristic characteristic) {
+                    synchronized (lock) {
+                        switch (status) {
                             case BTLock.IL_FALSE:
                                 Log.w(TAG, "Not a BTLock. Disconnecting...");
                                 disconnectLock();
-                                break;
                             case BTLock.IL_TRUE:
+                                Log.i(TAG, "The address of the device is " + sLock.getAddress());
                                 break;
                         }
+                        lock.notify();
+                    }
+                }
+            };
+            sLock.registerCallback(BTLock.CB_IS_LOCK, cb);
+            try {
+                sLock.connectGatt(context, new BTLock.BTLockCallback() {
+                    @Override
+                    public void onGattConnect(BluetoothGatt gatt) {
+                        gatt.discoverServices();
                     }
                 });
-                break;
-            case BTLock.IL_FALSE:
-                Log.w(TAG, "Not a BTLock. Disconnecting...");
-                disconnectLock();
-                break;
-            case BTLock.IL_TRUE:
-                break;
+            } catch (Exception e) {
+                e.printStackTrace();
+                Log.e(TAG, e.getMessage());
+            }
+            switch (sLock.isLock()) {
+                case BTLock.IL_UNKNOWN:
+                    try {
+                        Log.i(TAG, "Whether a lock unknown. Waiting...");
+                        lock.wait(3000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    break;
+                case BTLock.IL_FALSE:
+                    Log.w(TAG, "Not a BTLock. Disconnecting...");
+                    disconnectLock();
+                case BTLock.IL_TRUE:
+                    Log.i(TAG, "The address of the device is " + sLock.getAddress());
+                    break;
+            }
+            sLock.deregisterCallback(BTLock.CB_IS_LOCK, cb);
         }
     }
 
     public static void disconnectLock(){
-        if (!hasLock()){
+        BTLock lock = sLock;
+        sLock = null;
+        if (lock == null){
             return;
         }
-        sLock.close();
-        sLock = null;
+        lock.close();
     }
 
     /**

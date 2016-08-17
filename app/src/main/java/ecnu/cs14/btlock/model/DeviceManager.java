@@ -28,12 +28,12 @@ public class DeviceManager {
         return sAdapter!=null && sAdapter.enable();
     }
 
-    public abstract class ScanCallback{
-        public void onFound(BluetoothDevice device){ }
+    public interface ScanCallback{
+        void onFound(BluetoothDevice device, int rssi);
 
-        public void onStart(){ }
+        void onStart();
 
-        public void onFinish(){ }
+        void onFinish();
     }
     private static HashSet<ScanCallback> sCallbacks = new HashSet<>();
 
@@ -50,8 +50,9 @@ public class DeviceManager {
             String action = intent.getAction();
             if(action.equals(BluetoothDevice.ACTION_FOUND)){
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                int rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE);
                 for(ScanCallback callback: sCallbacks){
-                    callback.onFound(device);
+                    callback.onFound(device, rssi);
                 }
             } else if(action.equals(BluetoothAdapter.ACTION_DISCOVERY_STARTED)) {
                 for(ScanCallback callback: sCallbacks){

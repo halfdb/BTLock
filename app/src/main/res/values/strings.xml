@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">BTLock</string>
+    <string name="enableBtOrNotMsg">是否开启蓝牙？</string>
 </resources>

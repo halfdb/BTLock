@@ -13,11 +13,7 @@ class BTLock extends BluetoothGattCallback {
     private BTLock() { }
 
     final public static long SERVICE_UUID_MSD=0x11DB00000000L;
-//    final public static UUID SERVICE_UUID = new UUID(SERVICE_UUID_MSD, 0);
-//    final public static ParcelUuid SERVICE_PARCEL_UUID = new ParcelUuid(SERVICE_UUID);
     final public static long MASK_UUID_MSD=0xFFFF00000000L;
-//    final public static UUID MASK_UUID = new UUID(MASK_UUID_MSD, 0);
-//    final public static ParcelUuid MASK_PARCEL_UUID = new ParcelUuid(MASK_UUID);
 
     public static abstract class BTLockCallback{
         public abstract void onGattConnect(BluetoothGatt gatt);
@@ -41,11 +37,25 @@ class BTLock extends BluetoothGattCallback {
         return mGatt;
     }
 
+    public String getAddress(){
+        return mDevice.getAddress();
+    }
+
+    public String getName() {
+        return mDevice.getName();
+    }
+
     public void close(){
-        mGatt.close();
+        BluetoothGatt gatt = mGatt;
         mGatt = null;
+        if (gatt != null) {
+            gatt.close();
+        }
         mService = null;
         mDevice = null;
+        for (HashSet s : callbackLists) {
+            s.clear();
+        }
     }
 
     public boolean setCharacteristicNotification(BluetoothGattCharacteristic characteristic, boolean enable){
@@ -104,7 +114,7 @@ class BTLock extends BluetoothGattCallback {
             Log.e(TAG, "Callback index out of range.");
             return;
         }
-        ((HashSet<GeneralCallback>)callbackLists[index]).remove(callback);
+        callbackLists[index].remove(callback);
     }
 
 

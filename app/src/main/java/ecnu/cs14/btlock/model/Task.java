@@ -1,6 +1,7 @@
 package ecnu.cs14.btlock.model;
 
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.support.annotation.Nullable;
 
 public abstract class Task {
     private BluetoothGattCharacteristic mChar;
@@ -14,18 +15,18 @@ public abstract class Task {
         void onUnexpected(Data response);
     }
 
-    public Task(BluetoothGattCharacteristic characteristic, Data dataToSend, Data expectedResponse, Handler callback){
+    public Task(BluetoothGattCharacteristic characteristic, Data dataToSend, Data expectedResponse, @Nullable Handler callback){
         mChar = characteristic;
         mDataToSend = dataToSend;
         mMasks = new Data();
         for (int i = 0; i < Data.SIZE; i++) {
-            mMasks.set(i, (byte)-127);
+            mMasks.set(i, (byte)-1);
         }
         mExpectedResponse = expectedResponse;
         mHandler = callback;
     }
 
-    public Task(BluetoothGattCharacteristic characteristic, Data dataToSend, Data expectedResponse, Data masks, Handler callback) {
+    public Task(BluetoothGattCharacteristic characteristic, Data dataToSend, Data expectedResponse, Data masks, @Nullable Handler callback) {
         mChar = characteristic;
         mDataToSend = dataToSend;
         mMasks = masks;
@@ -33,11 +34,11 @@ public abstract class Task {
         mHandler = callback;
     }
 
-    public void execute(){
+    public boolean execute(boolean useCallback){
         Data response = BTLockManager.writeCharacteristicAndReadResponse(mDataToSend, mChar);
         if (response == null) {
             mHandler.onUnexpected(null);
-            return;
+            return false;
         }
         Data maskedResponse = new Data();
         for (int i = 0; i < Data.SIZE; i++) {
@@ -45,10 +46,13 @@ public abstract class Task {
             b = (byte) (b & mMasks.get(i));
             maskedResponse.set(i, b);
         }
-        if (!maskedResponse.equals(mExpectedResponse)) {
-            mHandler.onUnexpected(response);
-        } else {
-            mHandler.onReceive(response);
+        if(useCallback) {
+            if (!maskedResponse.equals(mExpectedResponse)) {
+                mHandler.onUnexpected(response);
+            } else {
+                mHandler.onReceive(response);
+            }
         }
+        return maskedResponse.equals(mExpectedResponse);
     }
 }

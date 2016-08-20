@@ -1,6 +1,6 @@
-package ecnu.cs14.btlock.presenter;
+package ecnu.cs14.btlock.model;
 
-final class CommandCode {
+public final class CommandCode {
 
     private static byte rawBinary(int i) {
         if (i <= 0x7f) {
@@ -41,7 +41,7 @@ final class CommandCode {
             return (byte)((u << 2) | g);
         }
 
-        public static int getAccountNum(byte uid) {
+        public static int getUserNum(byte uid) {
             return ((uid >> 2) & 0x7);
         }
 

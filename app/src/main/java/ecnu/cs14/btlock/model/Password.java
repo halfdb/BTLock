@@ -3,14 +3,13 @@ package ecnu.cs14.btlock.model;
 import java.util.ArrayList;
 import java.util.Collection;
 
-public class Data extends ArrayList<Byte> implements Cloneable {
-
-    public static final int SIZE = 17;
-
+public class Password extends ArrayList<Byte> implements Cloneable {
+    public static final int SIZE = 16;
+    
     /**
      * Constructs a new {@code ArrayList} instance with zero initial capacity.
      */
-    public Data() {
+    public Password() {
         super(SIZE);
     }
 
@@ -20,7 +19,7 @@ public class Data extends ArrayList<Byte> implements Cloneable {
      *
      * @param collection the collection of elements to add.
      */
-    public Data(Collection<? extends Byte> collection) throws Exception {
+    public Password(Collection<? extends Byte> collection) throws Exception {
         super(collection);
         if(collection.size()!=SIZE)
         {
@@ -28,7 +27,7 @@ public class Data extends ArrayList<Byte> implements Cloneable {
         }
     }
 
-    public <T extends Byte> Data(T[] array) throws Exception
+    public <T extends Byte> Password(T[] array) throws Exception
     {
         super(SIZE);
         if (array.length != SIZE){
@@ -39,7 +38,7 @@ public class Data extends ArrayList<Byte> implements Cloneable {
         }
     }
 
-    public Data(byte[] array) throws Exception
+    public Password(byte[] array) throws Exception
     {
         super(SIZE);
         if (array.length != SIZE){
@@ -61,24 +60,25 @@ public class Data extends ArrayList<Byte> implements Cloneable {
     @Override
     public Object clone() {
         try {
-            return new Data(this.byteArray());
+            return new Password(this.byteArray());
         } catch (Exception e) {
             // impossible
             return null;
         }
     }
 
-    public static Data extendPassword(Password password) {
+    public static Password extractFromData(Data data) {
         try {
             byte[] bytes = new byte[SIZE];
-            int i0 = SIZE - Password.SIZE;
-            for (int i = i0; i < SIZE; i++) {
-                bytes[i] = password.get(i - i0);
+            int i = SIZE - Data.SIZE, i0 = i;
+            for ( ;   i < Data.SIZE ;  i++) {
+                bytes[i - i0] = data.get(i);
             }
-            return new Data(bytes);
+            return new Password(bytes);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
     }
+
 }

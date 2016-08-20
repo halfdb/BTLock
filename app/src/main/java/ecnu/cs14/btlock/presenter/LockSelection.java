@@ -74,12 +74,8 @@ public class LockSelection implements AdapterView.OnItemClickListener {
         };
         DeviceManager.registerScanCallback(cb);
 
-        // start discovery
-        if (!DeviceManager.startDiscovery(mActivity)) {
-            return false;
-        }
-
-        return true;
+        // start discovery and return
+        return DeviceManager.startDiscovery(mActivity);
     }
 
     /**

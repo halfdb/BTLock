@@ -35,9 +35,15 @@ public abstract class Task {
     }
 
     public boolean execute(boolean useCallback){
+        if(mHandler == null) {
+            useCallback = false;
+        }
+
         Data response = BTLockManager.writeCharacteristicAndReadResponse(mDataToSend, mChar);
         if (response == null) {
-            mHandler.onUnexpected(null);
+            if(useCallback) {
+                mHandler.onUnexpected(null);
+            }
             return false;
         }
         Data maskedResponse = new Data();

@@ -9,10 +9,19 @@ import ecnu.cs14.btlock.model.DeviceManager;
 class BTLock implements Comparable{
     private static BTLock sCurrentLock;
 
-    public static BTLock getCurrentLock() {
+    private static void updateHasLock() {
         if(!BTLockManager.hasLock()) {
             sCurrentLock = null;
         }
+    }
+
+    public static boolean hasLock() {
+        updateHasLock();
+        return (sCurrentLock != null);
+    }
+
+    public static BTLock getCurrentLock() {
+        updateHasLock();
         return sCurrentLock;
     }
 

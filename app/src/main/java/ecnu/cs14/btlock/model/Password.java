@@ -13,6 +13,25 @@ public class Password extends ArrayList<Byte> implements Cloneable {
         super(SIZE);
     }
 
+    public Password(String s) {
+        super(SIZE);
+        String[] strings = s.split(" ");
+        for (int i = 0; i < SIZE; i++) {
+            set(i, Byte.valueOf(strings[i]));
+        }
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(get(0));
+        for (int i = 1; i < SIZE; i++) {
+            stringBuilder.append(' ');
+            stringBuilder.append(get(i));
+        }
+        return stringBuilder.toString();
+    }
+
     /**
      * Constructs a new instance of {@code ArrayList} containing the elements of
      * the specified collection.

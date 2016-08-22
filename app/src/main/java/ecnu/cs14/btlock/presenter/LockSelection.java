@@ -27,7 +27,7 @@ public class LockSelection implements AdapterView.OnItemClickListener {
     public boolean startDiscovery(){
         // start bt
         if (!DeviceManager.isBtAvailable()) {
-            if(mActivity.yesNoBox(mActivity.getString(R.string.enableBtOrNotMsg), "")) {
+            if(mActivity.yesNoBox(mActivity.getString(R.string.enable_bt_or_not), "")) {
                 if(!DeviceManager.enableBt()){
                     return false;
                 }
@@ -94,6 +94,7 @@ public class LockSelection implements AdapterView.OnItemClickListener {
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
         connectLock((BTLock) parent.getItemAtPosition(position));
+        mActivity.onSelected();
     }
 
     private void connectLock(BTLock lock) {

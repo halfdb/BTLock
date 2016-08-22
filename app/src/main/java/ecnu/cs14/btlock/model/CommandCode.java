@@ -59,7 +59,7 @@ public final class CommandCode {
             return (byte) (uid.getUidOf(u, g) | CMD_PREFIX);
         }
 
-        public static byte getCmdUnlock(int uid) {
+        public static byte getCmdUnlock(byte uid) {
             return (byte) (uid | CMD_PREFIX);
         }
 

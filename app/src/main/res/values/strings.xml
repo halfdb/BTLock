@@ -1,4 +1,7 @@
 <resources>
     <string name="app_name">BTLock</string>
-    <string name="enableBtOrNotMsg">是否开启蓝牙？</string>
+    <string name="no_lock_available">未连接至蓝牙锁</string>
+    <string name="lock_disconnected">蓝牙锁已断开</string>
+    <string name="unlock_failure">开锁失败</string>
+    <string name="enable_bt_or_not">是否开启蓝牙？</string>
 </resources>

@@ -1,6 +1,7 @@
 package ecnu.cs14.btlock.presenter;
 
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGattCharacteristic;
 import android.content.Context;
 import android.support.annotation.NonNull;
 import ecnu.cs14.btlock.model.BTLockManager;
@@ -9,6 +10,14 @@ import ecnu.cs14.btlock.model.DeviceManager;
 class BTLock implements Comparable{
     private static BTLock sCurrentLock;
 
+    private static Runnable disconnectionCallback = new Runnable() {
+        @Override
+        public void run() {
+            sCurrentLock = null;
+            BTLockManager.deregisterDisconnectionCallback(this);
+        }
+    };
+
     private static void updateHasLock() {
         if(!BTLockManager.hasLock()) {
             sCurrentLock = null;
@@ -16,12 +25,12 @@ class BTLock implements Comparable{
     }
 
     public static boolean hasLock() {
-        updateHasLock();
+//        updateHasLock();
         return (sCurrentLock != null);
     }
 
     public static BTLock getCurrentLock() {
-        updateHasLock();
+//        updateHasLock();
         return sCurrentLock;
     }
 
@@ -39,6 +48,10 @@ class BTLock implements Comparable{
 
     public String getAddress() {
         return mDevice.getAddress();
+    }
+
+    public BluetoothGattCharacteristic getMainChar() {
+        return BTLockManager.getMainCharacteristic();
     }
 
     public int getRssi(){
@@ -91,5 +104,8 @@ class BTLock implements Comparable{
     public void connect(Context context) {
         BTLockManager.connectLock(mDevice, context);
         sCurrentLock = this;
+        BTLockManager.registerDisconnectionCallback(disconnectionCallback);
+
+
     }
 }

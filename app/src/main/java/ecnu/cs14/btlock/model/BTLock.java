@@ -12,8 +12,9 @@ class BTLock extends BluetoothGattCallback {
 
     private BTLock() { }
 
-    final public static long SERVICE_UUID_MSD=0x11DB00000000L;
-    final public static long MASK_UUID_MSD=0xFFFF00000000L;
+    final public static long SERVICE_UUID_MSD = 0x11DB00000000L;
+    final public static long MAIN_CHAR_UUID_MSD = 0x11DC00000000L;
+    final public static long MASK_UUID_MSD = 0xFFFF00000000L;
 
     public static abstract class BTLockCallback{
         public abstract void onGattConnect(BluetoothGatt gatt);
@@ -22,6 +23,7 @@ class BTLock extends BluetoothGattCallback {
     private BluetoothDevice mDevice;
     private BluetoothGatt mGatt;
     private BluetoothGattService mService = null;
+    private BluetoothGattCharacteristic mMainCharacteristic = null;
 
     public BTLock(BluetoothDevice device){
         mDevice = device;
@@ -45,6 +47,8 @@ class BTLock extends BluetoothGattCallback {
         return mDevice.getName();
     }
 
+    public BluetoothGattCharacteristic getmMainCharacteristic() { return mMainCharacteristic; }
+
     public void close(){
         BluetoothGatt gatt = mGatt;
         mGatt = null;
@@ -53,6 +57,7 @@ class BTLock extends BluetoothGattCallback {
         }
         mService = null;
         mDevice = null;
+        mMainCharacteristic = null;
         for (HashSet s : callbackLists) {
             s.clear();
         }
@@ -163,7 +168,19 @@ class BTLock extends BluetoothGattCallback {
         }
         if(null != uuid){
             mService = mGatt.getService(uuid);
-            mIsLock = IL_TRUE;
+
+            for (BluetoothGattCharacteristic c: mService.getCharacteristics()) {
+                if((c.getUuid().getMostSignificantBits() & MASK_UUID_MSD) == MAIN_CHAR_UUID_MSD) {
+                    mMainCharacteristic = c;
+                    break;
+                }
+            }
+
+            if(null != mMainCharacteristic){
+                mIsLock = IL_TRUE;
+            } else {
+                mIsLock = IL_FALSE;
+            }
         } else {
             mIsLock = IL_FALSE;
         }

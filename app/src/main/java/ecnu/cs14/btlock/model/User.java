@@ -1,12 +1,23 @@
 package ecnu.cs14.btlock.model;
 
+import android.support.annotation.NonNull;
 import android.util.Log;
+
+import javax.net.ssl.CertPathTrustManagerParameters;
 
 public class User extends Account {
     private static final String TAG = User.class.getSimpleName();
 
     public User(byte uid, Password password) {
         super(uid, password);
+    }
+
+    public static User fromAccount(Account account) {
+        if (CommandCode.uid.getGuestNum(account.getUid())!=0) {
+            return null;
+        } else {
+            return new User(account.getUid(), account.getPassword());
+        }
     }
 
     private Guest[] mGuests = new Guest[3];

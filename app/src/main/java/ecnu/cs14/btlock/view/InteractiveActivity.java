@@ -1,6 +1,7 @@
 package ecnu.cs14.btlock.view;
 
 import android.app.Activity;
+import android.widget.Toast;
 
 abstract class InteractiveActivity extends Activity{
 
@@ -14,6 +15,6 @@ abstract class InteractiveActivity extends Activity{
     }
 
     public final void toast(String msg) {
-        // TODO
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
     }
 }

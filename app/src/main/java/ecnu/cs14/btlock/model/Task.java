@@ -2,8 +2,11 @@ package ecnu.cs14.btlock.model;
 
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.support.annotation.Nullable;
+import android.util.Log;
 
-public abstract class Task {
+public class Task {
+    private static final String TAG = Task.class.getSimpleName();
+
     private BluetoothGattCharacteristic mChar;
     private Data mDataToSend;
     private Data mMasks;
@@ -35,6 +38,8 @@ public abstract class Task {
     }
 
     public boolean execute(boolean useCallback){
+        Log.i(TAG, "The following Data is going to be sent: " + mDataToSend);
+
         if(mHandler == null) {
             useCallback = false;
         }

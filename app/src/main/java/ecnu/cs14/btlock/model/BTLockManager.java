@@ -8,6 +8,8 @@ import android.content.Context;
 import android.support.annotation.Nullable;
 import android.util.Log;
 
+import java.util.HashSet;
+
 public class BTLockManager {
     private static final String TAG = BTLockManager.class.getSimpleName();
 
@@ -89,6 +91,20 @@ public class BTLockManager {
         }
     }
 
+    public static BluetoothGattCharacteristic getMainCharacteristic() {
+        return sLock.getmMainCharacteristic();
+    }
+
+    private static HashSet<Runnable> callbacks = new HashSet<>();
+
+    public static void registerDisconnectionCallback(Runnable callback) {
+        callbacks.add(callback);
+    }
+
+    public static void deregisterDisconnectionCallback(Runnable callback) {
+        callbacks.remove(callback);
+    }
+
     public static void disconnectLock(){
         BTLock lock = sLock;
         sLock = null;
@@ -96,6 +112,9 @@ public class BTLockManager {
             return;
         }
         lock.close();
+        for (Runnable callback: callbacks) {
+            callback.run();
+        }
     }
 
     /**

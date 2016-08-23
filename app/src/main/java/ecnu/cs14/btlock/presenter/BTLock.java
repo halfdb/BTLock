@@ -5,7 +5,6 @@ import android.bluetooth.BluetoothGattCharacteristic;
 import android.content.Context;
 import android.support.annotation.NonNull;
 import ecnu.cs14.btlock.model.BTLockManager;
-import ecnu.cs14.btlock.model.DeviceManager;
 
 class BTLock implements Comparable{
     private static BTLock sCurrentLock;

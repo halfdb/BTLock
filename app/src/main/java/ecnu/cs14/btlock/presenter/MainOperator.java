@@ -1,6 +1,5 @@
 package ecnu.cs14.btlock.presenter;
 
-import android.bluetooth.BluetoothGattCharacteristic;
 import android.util.Log;
 import ecnu.cs14.btlock.R;
 import ecnu.cs14.btlock.model.*;
@@ -13,69 +12,89 @@ public class MainOperator {
 
     private AbstractMainActivity mActivity;
 
-    private Runnable mDisconnectionCallback;
-
     public MainOperator(AbstractMainActivity activity) {
         mActivity = activity;
         if (BTLock.hasLock()) {
-            mDisconnectionCallback = new Runnable() {
+            BTLockManager.registerDisconnectionCallback(new Runnable() {
                 @Override
                 public void run() {
-                    mIsReady = false;
+                    synchronized (MainOperator.this) {
+                        mIsReady = false;
+                    }
                     mActivity.disableUnlock();
                     mActivity.toast(mActivity.getString(R.string.lock_disconnected));
+                    BTLockManager.deregisterDisconnectionCallback(this);
                 }
-            };
-            BTLockManager.registerDisconnectionCallback(mDisconnectionCallback);
-            prepareForUnlock();
+            });
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    prepareForUnlock();
+                }
+            }).start();
             mActivity.enableUnlock();
         } else {
             mActivity.disableUnlock();
             mActivity.toast(mActivity.getString(R.string.no_lock_available));
-            mActivity.startInitializingActivity();
+            mActivity.startListActivity();
         }
     }
 
-    private BluetoothGattCharacteristic mMainChar;
+    public synchronized void updateUnlockState() {
+        if (mIsReady) {
+            if(!mIsWaiting) {
+                mActivity.enableUnlock();
+            } else {
+                mActivity.waitUnlocking();
+            }
+        } else {
+            mActivity.disableUnlock();
+        }
+    }
+
     private Data mUnlockCommand;
     private Data mExpectedResponse;
 
-    private boolean mIsReady = false;
+    private volatile boolean mIsReady = false;
+    private volatile boolean mIsWaiting = false;
 
-    public void prepareForUnlock() {
+    public synchronized void prepareForUnlock() {
         BTLock lock = BTLock.getCurrentLock();
         if (lock == null) {
             return;
         }
 
-        // prepare main characteristic
-        mMainChar = lock.getMainChar();
-
         // find stored uids
         AccountStorage as = new AccountStorage(mActivity, lock.getAddress());
         HashSet<Byte> uids = as.getStoredUids();
         if (uids.size() == 0) {
+            mActivity.startInitializingActivity();
             return;
         }
 
         // find the best account
         byte uidCandidate = -128;
         for (byte uid: uids) {
-            if (uid > uidCandidate) {
-                uidCandidate = uid;
-            } else if (CommandCode.uid.getGuestNum(uid) == 0) {
-                uidCandidate = uid;
+            uidCandidate = uid;
+            if (CommandCode.uid.getGuestNum(uid) == 0) {
                 break;
             }
         }
         Account account = as.getStoredAccount(uidCandidate);
+        if (account == null) {
+            return;
+        }
 
         // build the command to unlock the BTLock
         byte commandHead = CommandCode.unlock.getCmdUnlock(account.getUid());
         mUnlockCommand = Data.extendPassword(account.getPassword());
+        if (mUnlockCommand == null) {
+            Log.e(TAG, "prepareForUnlock: Failed to prepare unlock command.");
+            return;
+        }
         mUnlockCommand.set(0, commandHead);
         mExpectedResponse = new Data();
-        mExpectedResponse.set(0, (byte)(CommandCode.unlock.CMD_ACK | commandHead));
+        mExpectedResponse.set(0, (byte)(CommandCode.unlock.CMD_ACK | account.getUid()));
         for (int i = 1; i < Data.SIZE; i++) {
             mExpectedResponse.set(i, (byte) 0);
         }
@@ -84,9 +103,13 @@ public class MainOperator {
     }
 
     public boolean unlock() {
-        if (!mIsReady) {
-            return false;
+        synchronized (this) {
+            if (!mIsReady) {
+                return false;
+            }
+            mIsWaiting = true;
         }
+        mActivity.waitUnlocking();
 
         Task.Handler cb = new Task.Handler() {
             @Override
@@ -104,10 +127,14 @@ public class MainOperator {
             }
         };
 
-        if (!new Task(mMainChar, mUnlockCommand, mExpectedResponse, cb).execute(true)) {
+        if (!new Task(mUnlockCommand, mExpectedResponse, cb).execute(true)) {
+            mIsWaiting = false;
+            mActivity.enableUnlock();
             mActivity.toast(mActivity.getString(R.string.unlock_failure));
             return false;
         } else {
+            mIsWaiting = false;
+            mActivity.enableUnlock();
             return true;
         }
     }

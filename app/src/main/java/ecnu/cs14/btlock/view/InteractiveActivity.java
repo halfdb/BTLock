@@ -14,6 +14,11 @@ abstract class InteractiveActivity extends Activity{
         return false;
     }
 
+    public final String inputBox(String msg, String title) {
+        // TODO
+        return "";
+    }
+
     public final void toast(String msg) {
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
     }

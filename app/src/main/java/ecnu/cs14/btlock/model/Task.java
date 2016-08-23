@@ -13,40 +13,42 @@ public class Task {
     private Data mExpectedResponse;
     private Handler mHandler;
 
-    public interface Handler{
+    public interface Handler {
         void onReceive(Data response);
         void onUnexpected(Data response);
     }
 
-    public Task(BluetoothGattCharacteristic characteristic, Data dataToSend, Data expectedResponse, @Nullable Handler callback){
-        mChar = characteristic;
+    public Task(Data dataToSend, Data expectedResponse, @Nullable Handler callback){
+        mChar = BTLockManager.getMainCharacteristic();
         mDataToSend = dataToSend;
         mMasks = new Data();
         for (int i = 0; i < Data.SIZE; i++) {
-            mMasks.set(i, (byte)-1);
+            mMasks.set(i, (byte) -1);
         }
         mExpectedResponse = expectedResponse;
         mHandler = callback;
     }
 
-    public Task(BluetoothGattCharacteristic characteristic, Data dataToSend, Data expectedResponse, Data masks, @Nullable Handler callback) {
-        mChar = characteristic;
+    public Task(Data dataToSend, Data expectedResponse, Data masks, @Nullable Handler callback) {
+        mChar = BTLockManager.getMainCharacteristic();
         mDataToSend = dataToSend;
         mMasks = masks;
         mExpectedResponse = expectedResponse;
         mHandler = callback;
     }
 
-    public boolean execute(boolean useCallback){
+    public boolean execute(boolean useCallback) {
         Log.i(TAG, "The following Data is going to be sent: " + mDataToSend);
 
-        if(mHandler == null) {
+        if (mHandler == null) {
             useCallback = false;
         }
-
-        Data response = BTLockManager.writeCharacteristicAndReadResponse(mDataToSend, mChar);
+        Data response;
+        synchronized (Task.class) {
+            response = BTLockManager.writeCharacteristicAndReadResponse(mDataToSend, mChar);
+        }
         if (response == null) {
-            if(useCallback) {
+            if (useCallback) {
                 mHandler.onUnexpected(null);
             }
             return false;
@@ -57,7 +59,7 @@ public class Task {
             b = (byte) (b & mMasks.get(i));
             maskedResponse.set(i, b);
         }
-        if(useCallback) {
+        if (useCallback) {
             if (!maskedResponse.equals(mExpectedResponse)) {
                 mHandler.onUnexpected(response);
             } else {

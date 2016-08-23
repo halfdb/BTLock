@@ -41,8 +41,8 @@ public class LockSelection implements AdapterView.OnItemClickListener {
             @Override
             public void onFound(BluetoothDevice device, int rssi) {
                 for (BTLock l : mDevices) {
-                    String addr = l.getAddress();
-                    if (addr.equals(device.getAddress())) {
+                    String address = l.getAddress();
+                    if (address.equals(device.getAddress())) {
                         return;
                     }
                 }

@@ -82,7 +82,7 @@ public class Password extends ArrayList<Byte> implements Cloneable {
             return new Password(this.byteArray());
         } catch (Exception e) {
             // impossible
-            return null;
+            return super.clone();
         }
     }
 

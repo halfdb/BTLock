@@ -64,7 +64,7 @@ public class Data extends ArrayList<Byte> implements Cloneable {
             return new Data(this.byteArray());
         } catch (Exception e) {
             // impossible
-            return null;
+            return super.clone();
         }
     }
 

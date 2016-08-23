@@ -7,4 +7,5 @@ public abstract class AbstractMainActivity extends InteractiveActivity{
 
     public abstract void enableUnlock();
     public abstract void disableUnlock();
+    public abstract void waitUnlocking();
 }

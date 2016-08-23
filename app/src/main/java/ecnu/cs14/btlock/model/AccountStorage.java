@@ -44,7 +44,7 @@ public class AccountStorage {
             return null;
         }
         Password password = new Password(storedString);
-        return new Account(uid, password);
+        return AccountFactory.newInstance(uid, password);
     }
 
     public void removeStoredAccount(byte uid) {

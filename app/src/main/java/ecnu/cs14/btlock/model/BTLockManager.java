@@ -113,7 +113,12 @@ public class BTLockManager {
         }
         lock.close();
         for (Runnable callback: callbacks) {
-            callback.run();
+            try {
+                callback.run();
+            } catch (NullPointerException e) {
+                Log.i(TAG, "disconnectLock: Some callback threw a NullPointerException.");
+                e.printStackTrace();
+            }
         }
     }
 

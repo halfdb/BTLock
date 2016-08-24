@@ -5,8 +5,6 @@ import ecnu.cs14.btlock.R;
 import ecnu.cs14.btlock.model.*;
 import ecnu.cs14.btlock.view.AbstractMainActivity;
 
-import java.util.HashSet;
-
 public class MainOperator {
     private static final String TAG = MainOperator.class.getSimpleName();
 
@@ -15,17 +13,6 @@ public class MainOperator {
     public MainOperator(AbstractMainActivity activity) {
         mActivity = activity;
         if (BTLock.hasLock()) {
-            BTLockManager.registerDisconnectionCallback(new Runnable() {
-                @Override
-                public void run() {
-                    synchronized (MainOperator.this) {
-                        mIsReady = false;
-                    }
-                    mActivity.disableUnlock();
-                    mActivity.toast(mActivity.getString(R.string.lock_disconnected));
-                    BTLockManager.deregisterDisconnectionCallback(this);
-                }
-            });
             new Thread(new Runnable() {
                 @Override
                 public void run() {
@@ -54,6 +41,7 @@ public class MainOperator {
 
     private Data mUnlockCommand;
     private Data mExpectedResponse;
+    private Task.Handler mCallback;
 
     private volatile boolean mIsReady = false;
     private volatile boolean mIsWaiting = false;
@@ -64,26 +52,28 @@ public class MainOperator {
             return;
         }
 
-        // find stored uids
-        AccountStorage as = new AccountStorage(mActivity, lock.getAddress());
-        HashSet<Byte> uids = as.getStoredUids();
-        if (uids.size() == 0) {
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                synchronized (MainOperator.this) {
+                    mIsReady = false;
+                }
+                mActivity.disableUnlock();
+                mActivity.toast(mActivity.getString(R.string.lock_disconnected));
+                BTLockManager.deregisterDisconnectionCallback(this);
+            }
+        };
+        BTLockManager.registerDisconnectionCallback(runnable);
+
+        // find the best account
+        final AccountStorage as = new AccountStorage(mActivity, lock.getAddress());
+        final Account account = AccountOperator.findBestAccount(as);
+        if (account == null) {
+            BTLockManager.deregisterDisconnectionCallback(runnable);
             mActivity.startInitializingActivity();
             return;
         }
-
-        // find the best account
-        byte uidCandidate = -128;
-        for (byte uid: uids) {
-            uidCandidate = uid;
-            if (CommandCode.uid.getGuestNum(uid) == 0) {
-                break;
-            }
-        }
-        Account account = as.getStoredAccount(uidCandidate);
-        if (account == null) {
-            return;
-        }
+        final boolean isGuest = account instanceof Guest;
 
         // build the command to unlock the BTLock
         byte commandHead = CommandCode.unlock.getCmdUnlock(account.getUid());
@@ -99,22 +89,13 @@ public class MainOperator {
             mExpectedResponse.set(i, (byte) 0);
         }
 
-        mIsReady = true;
-    }
-
-    public boolean unlock() {
-        synchronized (this) {
-            if (!mIsReady) {
-                return false;
-            }
-            mIsWaiting = true;
-        }
-        mActivity.waitUnlocking();
-
-        Task.Handler cb = new Task.Handler() {
+        // build the callback
+        mCallback = new Task.Handler() {
             @Override
             public void onReceive(Data response) {
-
+                if (isGuest) {
+                    as.removeStoredAccount(account.getUid());
+                }
             }
 
             @Override
@@ -127,7 +108,24 @@ public class MainOperator {
             }
         };
 
-        if (!new Task(mUnlockCommand, mExpectedResponse, cb).execute(true)) {
+        mIsReady = true;
+
+        // now able to unlock, start to fill guests
+        if (!isGuest) {
+            new AccountOperator(as).fillGuests((User) account);
+        }
+    }
+
+    public boolean unlock() {
+        synchronized (this) {
+            if (!mIsReady) {
+                return false;
+            }
+            mIsWaiting = true;
+        }
+        mActivity.waitUnlocking();
+
+        if (!new Task(mUnlockCommand, mExpectedResponse, mCallback).execute(true)) {
             mIsWaiting = false;
             mActivity.enableUnlock();
             mActivity.toast(mActivity.getString(R.string.unlock_failure));

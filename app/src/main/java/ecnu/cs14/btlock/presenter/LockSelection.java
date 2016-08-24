@@ -13,7 +13,7 @@ import java.util.ArrayList;
 public class LockSelection implements AdapterView.OnItemClickListener {
     public LockSelection(AbstractListActivity activity){
         mActivity = activity;
-        mAdapter = new ArrayAdapter<>(mActivity, 0 /* TODO */, mDevices);
+        mAdapter = new ArrayAdapter<>(mActivity, android.R.layout.simple_list_item_1, mDevices);
     }
 
     private AbstractListActivity mActivity;
@@ -94,12 +94,12 @@ public class LockSelection implements AdapterView.OnItemClickListener {
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
         connectLock((BTLock) parent.getItemAtPosition(position));
-        mActivity.onSelected();
     }
 
     private void connectLock(BTLock lock) {
         synchronized (LockSelection.class) {
             lock.connect(mActivity);
         }
+        mActivity.callFinish();
     }
 }

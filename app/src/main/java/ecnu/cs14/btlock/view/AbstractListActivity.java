@@ -5,5 +5,5 @@ import android.widget.ListView;
 public abstract class AbstractListActivity extends InteractiveActivity{
     public abstract ListView getListView();
 
-    public abstract void onSelected();
+    public abstract void callFinish();
 }

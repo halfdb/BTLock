@@ -49,6 +49,15 @@ public final class CommandCode {
             return (uid & 0x3);
         }
 
+        public static byte[] getAllAccounts(int u) {
+            return new byte[]{
+                    getUidOf(u, 0),
+                    getUidOf(u, 1),
+                    getUidOf(u, 2),
+                    getUidOf(u, 3)
+            };
+        }
+
         private uid() { }
     }
 
@@ -85,8 +94,8 @@ public final class CommandCode {
         public static final byte CMD_NEW_PWD_ACK = rawBinary(0xC0);
 
         public static final byte CMD_INQUIRY_PREFIX = 0x10;
-        public static byte getCmdInquiry(byte uid) {
-            return (byte) (uid | CMD_INQUIRY_PREFIX);
+        public static byte getCmdInquiry(int u) {
+            return (byte) (u | CMD_INQUIRY_PREFIX);
         }
         public static final byte CMD_INQUIRY_ACK = rawBinary(0x90);
 

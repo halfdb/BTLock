@@ -4,4 +4,7 @@
     <string name="lock_disconnected">蓝牙锁已断开</string>
     <string name="unlock_failure">开锁失败</string>
     <string name="enable_bt_or_not">是否开启蓝牙？</string>
+    <string name="account_setting_new_pwd">更新密码</string>
+    <string name="account_setting_delete_user">删除用户</string>
+    <string name="error">错误</string>
 </resources>

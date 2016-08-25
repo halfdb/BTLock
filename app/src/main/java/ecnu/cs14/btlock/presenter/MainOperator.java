@@ -13,12 +13,6 @@ public class MainOperator {
     public MainOperator(AbstractMainActivity activity) {
         mActivity = activity;
         if (BTLock.hasLock()) {
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    prepareForUnlock();
-                }
-            }).start();
             mActivity.enableUnlock();
         } else {
             mActivity.disableUnlock();

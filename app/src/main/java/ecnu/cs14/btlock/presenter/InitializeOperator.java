@@ -60,30 +60,30 @@ public class InitializeOperator implements Task.Handler {
     }
 
     public InitResult initialize() {
+        InitResult result;
         try {
             if (mAS.getStoredUids().size() != 0) {
-                return InitResult.ALREADY_INITIALIZED;
-            }
-
-            if (!fillVerification(mCommand)) {
-                return InitResult.NO_VERIFICATION_PROVIDED;
-            }
-
-            if(new Task(mCommand, mExpectedRes, mMask, this).execute(true)) {
-                return InitResult.COMPLETED;
+                result = InitResult.ALREADY_INITIALIZED;
+            } else if (!fillVerification(mCommand)) {
+                result = InitResult.NO_VERIFICATION_PROVIDED;
+            } else if(new Task(mCommand, mExpectedRes, mMask, this).execute(true)) {
+                setNickname(mActivity.inquireNickname());
+                result = InitResult.COMPLETED;
             } else {
-                return InitResult.FAILURE;
+                result = InitResult.FAILURE;
             }
         } catch (NullPointerException e) {
             synchronized (this) {
                 if (mConnLost) {
                     Log.e(TAG, "initialize: Connection lost.");
-                    return InitResult.CONNECTION_LOST;
+                    result = InitResult.CONNECTION_LOST;
                 } else {
                     throw e;
                 }
             }
         }
+        mActivity.initializeFinished(result);
+        return result;
     }
 
     private User userFromResponse(Data response) {

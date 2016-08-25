@@ -19,6 +19,7 @@ public class LockSelection implements AdapterView.OnItemClickListener {
     private AbstractListActivity mActivity;
     private ArrayList<BTLock> mDevices = new ArrayList<>();
     private ArrayAdapter<BTLock> mAdapter;
+    private DeviceManager.ScanCallback mCallback;
 
     /**
      * Start a discovery for locks.
@@ -37,7 +38,7 @@ public class LockSelection implements AdapterView.OnItemClickListener {
         }
 
         // register a scan callback
-        DeviceManager.ScanCallback cb = new DeviceManager.ScanCallback(){
+        mCallback = new DeviceManager.ScanCallback(){
             @Override
             public void onFound(BluetoothDevice device, int rssi) {
                 for (BTLock l : mDevices) {
@@ -72,7 +73,7 @@ public class LockSelection implements AdapterView.OnItemClickListener {
                 DeviceManager.deregisterScanCallback(this);
             }
         };
-        DeviceManager.registerScanCallback(cb);
+        DeviceManager.registerScanCallback(mCallback);
 
         // start discovery and return
         return DeviceManager.startDiscovery(mActivity);
@@ -100,6 +101,10 @@ public class LockSelection implements AdapterView.OnItemClickListener {
         synchronized (LockSelection.class) {
             lock.connect(mActivity);
         }
-        mActivity.callFinish();
+        mActivity.finish();
+    }
+
+    public void finish(){
+        DeviceManager.deregisterScanCallback(mCallback);
     }
 }

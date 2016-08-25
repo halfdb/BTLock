@@ -8,6 +8,33 @@
         android:paddingRight="@dimen/activity_horizontal_margin"
         android:paddingTop="@dimen/activity_vertical_margin"
         android:paddingBottom="@dimen/activity_vertical_margin"
-        tools:context="ecnu.cs14.btlock.MainActivity">
+        tools:context=".view.MainActivity">
 
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/unlock"
+        android:id="@+id/unlockButton"
+        android:layout_centerVertical="true"
+        android:layout_centerHorizontal="true" />
+
+    <Button
+        style="?android:attr/buttonStyleSmall"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/open_device_list"
+        android:id="@+id/deviceListButton"
+        android:layout_below="@+id/unlockButton"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="40dp" />
+
+    <Button
+        style="?android:attr/buttonStyleSmall"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/account_management"
+        android:id="@+id/accountButton"
+        android:layout_below="@+id/deviceListButton"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="15dp" />
 </RelativeLayout>

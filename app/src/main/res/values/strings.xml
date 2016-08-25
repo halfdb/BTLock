@@ -7,4 +7,14 @@
     <string name="account_setting_new_pwd">更新密码</string>
     <string name="account_setting_delete_user">删除用户</string>
     <string name="error">错误</string>
+    <string name="unlock">解锁</string>
+    <string name="open_device_list">设备列表</string>
+    <string name="account_management">账户管理</string>
+    <string name="choose_user_to_delete">选择要删除的用户</string>
+    <string name="make_a_nickname">给门锁做一个备注</string>
+    <string name="default_nickname">家用</string>
+    <string name="executing">执行中</string>
+    <string name="please_wait">请稍候…</string>
+    <string name="user_num_is">用户号是</string>
+    <string name="view_user_num">查看用户号</string>
 </resources>

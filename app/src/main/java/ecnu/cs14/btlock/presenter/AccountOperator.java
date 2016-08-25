@@ -7,7 +7,7 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import ecnu.cs14.btlock.R;
 import ecnu.cs14.btlock.model.*;
-import ecnu.cs14.btlock.view.AbstractSettingActivity;
+import ecnu.cs14.btlock.view.AbstractAccountActivity;
 
 import java.util.HashSet;
 
@@ -15,13 +15,13 @@ public class AccountOperator implements AdapterView.OnItemClickListener {
     private static final String TAG = AccountOperator.class.getSimpleName();
 
     private AccountStorage mAS;
-    private AbstractSettingActivity mActivity;
+    private AbstractAccountActivity mActivity;
 
     public AccountOperator(AccountStorage as) {
         mAS = as;
     }
 
-    public AccountOperator(AbstractSettingActivity activity) {
+    public AccountOperator(AbstractAccountActivity activity) {
         BTLock lock = BTLock.getCurrentLock();
         if (lock == null) {
             mActivity.toastError();
@@ -31,11 +31,12 @@ public class AccountOperator implements AdapterView.OnItemClickListener {
         mAS = new AccountStorage(mActivity, lock.getAddress());
 
          String[] options = new String[] {
+                activity.getString(R.string.view_user_num),
                 activity.getString(R.string.account_setting_new_pwd),
                 activity.getString(R.string.account_setting_delete_user)
         };
 
-        ListView view = activity.getSettingList();
+        ListView view = activity.getOptionList();
         view.setAdapter(new ArrayAdapter<>(activity, android.R.layout.simple_list_item_1, options));
         view.setOnItemClickListener(this);
         view.setEnabled(hasPermission());
@@ -83,16 +84,22 @@ public class AccountOperator implements AdapterView.OnItemClickListener {
      */
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+        Account account;
         switch (position) {
             case 0:
-                Account account = findBestAccount();
+                account = findBestAccount();
+                mActivity.messageBox(mActivity.getString(R.string.user_num_is) +
+                        Integer.toString(CommandCode.uid.getUserNum(account.getUid())), "");
+                break;
+            case 1:
+                account = findBestAccount();
                 if (account == null) {
                     Log.e(TAG, "onItemClick: Could not find a user account");
                     return;
                 }
                 inquireNewPwd(account.getUid());
                 break;
-            case 1:
+            case 2:
                 decideAndDelete();
                 break;
         }
@@ -198,7 +205,7 @@ public class AccountOperator implements AdapterView.OnItemClickListener {
 
     public void decideAndDelete() {
         Account account = findBestAccount();
-        User user;
+        final User user;
         if (account instanceof User) {
             user = (User) account;
         } else {
@@ -228,7 +235,9 @@ public class AccountOperator implements AdapterView.OnItemClickListener {
                 for (int i = 1; i < 6; i++) {
                     status[i-1] = ((b & (1<<i)) != 0);
                 }
-                deleteUser(mActivity.chooseUserToDelete(status));
+                int u = CommandCode.uid.getUserNum(user.getUid());
+                status[u-1] = false;
+                mActivity.chooseUserToDelete(status);
             }
 
             @Override

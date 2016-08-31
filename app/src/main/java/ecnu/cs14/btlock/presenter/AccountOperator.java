@@ -1,5 +1,6 @@
 package ecnu.cs14.btlock.presenter;
 
+import android.content.Intent;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
@@ -17,17 +18,18 @@ public class AccountOperator implements AdapterView.OnItemClickListener {
     private AccountStorage mAS;
     private AbstractAccountActivity mActivity;
 
-    public AccountOperator(AccountStorage as) {
+    AccountOperator(AccountStorage as) {
         mAS = as;
     }
 
     public AccountOperator(AbstractAccountActivity activity) {
         BTLock lock = BTLock.getCurrentLock();
+        mActivity = activity;
         if (lock == null) {
             mActivity.toastError();
+            mActivity.finish();
             return;
         }
-        mActivity = activity;
         mAS = new AccountStorage(mActivity, lock.getAddress());
 
          String[] options = new String[] {
@@ -84,21 +86,29 @@ public class AccountOperator implements AdapterView.OnItemClickListener {
      */
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-        Account account;
         switch (position) {
-            case 0:
-                account = findBestAccount();
+            case 0: {
+                final Account account = findBestAccount();
                 mActivity.messageBox(mActivity.getString(R.string.user_num_is) +
                         Integer.toString(CommandCode.uid.getUserNum(account.getUid())), "");
                 break;
-            case 1:
-                account = findBestAccount();
+            }
+            case 1: {
+                final Account account = findBestAccount();
                 if (account == null) {
                     Log.e(TAG, "onItemClick: Could not find a user account");
                     return;
                 }
-                inquireNewPwd(account.getUid());
+                mActivity.startWaiting();
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        inquireNewPwd(account.getUid());
+                        mActivity.stopWaiting();
+                    }
+                }).start();
                 break;
+            }
             case 2:
                 decideAndDelete();
                 break;
@@ -157,7 +167,7 @@ public class AccountOperator implements AdapterView.OnItemClickListener {
             if (uids.contains(uid)) {
                 ret[i] = true;
             } else {
-                Log.v(TAG, "Start to inquire new password for uid " + Byte.toString(uid));
+                Log.i(TAG, "Start to inquire new password for uid " + Byte.toString(uid));
                 ret[i] = inquireNewPwd(uid);
             }
         }
@@ -175,32 +185,44 @@ public class AccountOperator implements AdapterView.OnItemClickListener {
 
         int u = CommandCode.uid.getUserNum(operator.getUid());
         byte commandHead = CommandCode.account.getCmdDel(u, uToDelete);
-        Data command = Data.extendPassword(operator.getPassword());
+        final Data command = Data.extendPassword(operator.getPassword());
         if (command == null) {
             return false;
         }
         command.set(0, commandHead);
-        Data expectedRes = new Data();
+        final Data expectedRes = new Data();
         expectedRes.set(0, CommandCode.account.CMD_DEL_ACK);
 
-        return new Task(command, expectedRes, new Task.Handler() {
+        new Thread(new Runnable() {
             @Override
-            public void onReceive(Data response) {
-                for (byte uid :
-                        CommandCode.uid.getAllAccounts(uToDelete)) {
-                    mAS.removeStoredAccount(uid);
-                }
-            }
+            public void run() {
+                new Task(command, expectedRes, new Task.Handler() {
+                    @Override
+                    public void onReceive(Data response) {
+                        for (byte uid :
+                                CommandCode.uid.getAllAccounts(uToDelete)) {
+                            mAS.removeStoredAccount(uid);
+                        }
+                    }
 
-            @Override
-            public void onUnexpected(Data response) {
-                if (response == null) {
-                    Log.e(TAG, "Failed to fetch the response after sending.");
-                } else {
-                    Log.e(TAG, "Unexpected response: " + response.toString());
-                }
+                    @Override
+                    public void onUnexpected(Data response) {
+                        if (response == null) {
+                            Log.e(TAG, "Failed to fetch the response after sending.");
+                        } else {
+                            Log.e(TAG, "Unexpected response: " + response.toString());
+                        }
+                        mActivity.toastError();
+                    }
+                }).execute(true);
             }
-        }).execute(true);
+        }).start();
+
+        return true;
+    }
+
+    public void clear() {
+        mAS.removeAllStoredAccount();
     }
 
     public void decideAndDelete() {
@@ -214,40 +236,55 @@ public class AccountOperator implements AdapterView.OnItemClickListener {
         }
 
         byte commandHead = CommandCode.account.getCmdInquiry(CommandCode.uid.getUserNum(user.getUid()));
-        Data command = Data.extendPassword(user.getPassword());
+        final Data command = Data.extendPassword(user.getPassword());
         if (command == null) {
             return;
         }
         command.set(0, commandHead);
-        Data expectedRes = new Data();
+        final Data expectedRes = new Data();
         expectedRes.set(0, CommandCode.account.CMD_INQUIRY_ACK);
-        Data mask = new Data();
+        final Data mask = new Data();
         mask.set(0, (byte)-1);
         for (int i = 2; i < Data.SIZE; i++) {
             mask.set(i, (byte)-1);
         }
 
-        new Task(command, expectedRes, mask, new Task.Handler() {
+        mActivity.startWaiting();
+        new Thread(new Runnable() {
             @Override
-            public void onReceive(Data response) {
-                byte b = response.get(1);
-                boolean[] status = new boolean[5];
-                for (int i = 1; i < 6; i++) {
-                    status[i-1] = ((b & (1<<i)) != 0);
-                }
-                int u = CommandCode.uid.getUserNum(user.getUid());
-                status[u-1] = false;
-                mActivity.chooseUserToDelete(status);
-            }
+            public void run() {
+                new Task(command, expectedRes, mask, new Task.Handler() {
+                    @Override
+                    public void onReceive(Data response) {
+                        byte b = response.get(1);
+                        final boolean[] status = new boolean[5];
+                        for (int i = 1; i < 6; i++) {
+                            status[i-1] = ((b & (1<<i)) != 0);
+                        }
+                        int u = CommandCode.uid.getUserNum(user.getUid());
+                        status[u-1] = false;
+                        mActivity.runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                mActivity.stopWaiting();
+                                mActivity.chooseUserToDelete(status);
+                            }
+                        });
+                    }
 
-            @Override
-            public void onUnexpected(Data response) {
-                if (response == null) {
-                    Log.e(TAG, "Failed to fetch the response after sending.");
-                } else {
-                    Log.e(TAG, "Unexpected response: " + response.toString());
-                }
+                    @Override
+                    public void onUnexpected(Data response) {
+                        if (response == null) {
+                            Log.e(TAG, "Failed to fetch the response after sending.");
+                        } else {
+                            Log.e(TAG, "Unexpected response: " + response.toString());
+                        }
+                        mActivity.stopWaiting();
+                    }
+                }).execute(true);
             }
-        }).execute(true);
+        }).start();
     }
+
+
 }

@@ -11,22 +11,32 @@ import java.util.ArrayList;
 
 public class AccountActivity extends AbstractAccountActivity {
 
-    final ListView list = (ListView) findViewById(R.id.optionList);
-    AccountOperator presenter;
+    private ListView list;
+    private AccountOperator presenter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_account);
+        list = (ListView) findViewById(R.id.optionList);
     }
 
     @Override
-    protected void onResume() {
+    protected synchronized void onResume() {
         super.onResume();
-        presenter = new AccountOperator(this);
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                synchronized (AccountActivity.this) {
+                    presenter = new AccountOperator(AccountActivity.this);
+                }
+            }
+        });
     }
 
-    int deleteChoice;
+
+
+    private int deleteChoice;
     @Override
     public void chooseUserToDelete(final boolean[] choicesAvailable) {
         ArrayList<CharSequence> strings = new ArrayList<>();
@@ -37,11 +47,17 @@ public class AccountActivity extends AbstractAccountActivity {
                 choices.add(i+1);
             }
         }
+        CharSequence[] array = new CharSequence[strings.size()];
+        int i=0;
+        for (CharSequence c: strings) {
+            array[i++] = c;
+        }
+
 
         deleteChoice = -1;
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle(getString(R.string.choose_user_to_delete));
-        builder.setSingleChoiceItems((CharSequence[]) strings.toArray(), -1, new DialogInterface.OnClickListener() {
+        builder.setSingleChoiceItems(array, -1, new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 deleteChoice = which;
@@ -51,14 +67,14 @@ public class AccountActivity extends AbstractAccountActivity {
             @Override
             public void onClick(DialogInterface dialog, int which) {
                 if (deleteChoice != -1) {
-                    new Thread(new Runnable() {
+                    runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
                             startWaiting();
                             presenter.deleteUser(choices.get(deleteChoice));
                             stopWaiting();
                         }
-                    }).start();
+                    });
                 }
             }
         });

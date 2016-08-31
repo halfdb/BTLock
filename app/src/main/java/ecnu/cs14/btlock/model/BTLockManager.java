@@ -1,7 +1,6 @@
 package ecnu.cs14.btlock.model;
 
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothProfile;
 import android.content.Context;
@@ -16,6 +15,8 @@ public class BTLockManager {
     private BTLockManager() { }
 
     private static BTLock sLock = null;
+
+    final static Object sSync = new Object();
 
     public static boolean hasLock(){
         return (sLock != null);
@@ -32,41 +33,36 @@ public class BTLockManager {
         }
     };
 
-    public static void connectLock(BluetoothDevice device, Context context){
+    public synchronized static void connectLock(BluetoothDevice device, Context context){
         if (hasLock()) {
             disconnectLock();
         }
-
         sLock = new BTLock(device);
         sLock.registerCallback(BTLock.CB_CONNECTION_STATE_CHANGE, sStateCallback);
 
         final Object lock = new Object();
 
-        synchronized (lock) {
-            BTLock.GeneralCallback cb = new BTLock.GeneralCallback() {
-                @Override
-                public void callback(int status, BluetoothGattCharacteristic characteristic) {
-                    synchronized (lock) {
-                        switch (status) {
-                            case BTLock.IL_FALSE:
-                                Log.w(TAG, "Not a BTLock. Disconnecting...");
-                                disconnectLock();
-                            case BTLock.IL_TRUE:
-                                Log.i(TAG, "The address of the device is " + sLock.getAddress());
-                                break;
-                        }
-                        lock.notify();
+        BTLock.GeneralCallback cb = new BTLock.GeneralCallback() {
+            @Override
+            public void callback(int status, BluetoothGattCharacteristic characteristic) {
+                synchronized (lock) {
+                    switch (status) {
+                        case BTLock.IL_FALSE:
+                            Log.w(TAG, "Not a BTLock. Disconnecting...");
+                            disconnectLock();
+                        case BTLock.IL_TRUE:
+                            Log.i(TAG, "The address of the device is " + sLock.getAddress());
+                            break;
                     }
+                    lock.notify();
                 }
-            };
-            sLock.registerCallback(BTLock.CB_IS_LOCK, cb);
+            }
+        };
+        sLock.registerCallback(BTLock.CB_IS_LOCK, cb);
+        synchronized (lock) {
             try {
-                sLock.connectGatt(context, new BTLock.BTLockCallback() {
-                    @Override
-                    public void onGattConnect(BluetoothGatt gatt) {
-                        gatt.discoverServices();
-                    }
-                });
+                sLock.connectGatt(context);
+                DeviceManager.createBond(device);
             } catch (Exception e) {
                 e.printStackTrace();
                 Log.e(TAG, e.getMessage());
@@ -75,23 +71,28 @@ public class BTLockManager {
                 case BTLock.IL_UNKNOWN:
                     try {
                         Log.i(TAG, "Whether a lock unknown. Waiting...");
-                        lock.wait(3000);
+                        lock.wait();
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                    break;
+                    if (sLock.isLock()!=BTLock.IL_UNKNOWN) {
+                        break;
+                    } else {
+                        Log.w(TAG, "connectLock: timeout");
+                    }
                 case BTLock.IL_FALSE:
                     Log.w(TAG, "Not a BTLock. Disconnecting...");
                     disconnectLock();
                 case BTLock.IL_TRUE:
-                    Log.i(TAG, "The address of the device is " + sLock.getAddress());
                     break;
             }
-            sLock.deregisterCallback(BTLock.CB_IS_LOCK, cb);
+            if (sLock != null) {
+                sLock.deregisterCallback(BTLock.CB_IS_LOCK, cb);
+            }
         }
     }
 
-    public static BluetoothGattCharacteristic getMainCharacteristic() {
+    public synchronized static BluetoothGattCharacteristic getMainCharacteristic() {
         return sLock.getmMainCharacteristic();
     }
 
@@ -112,7 +113,8 @@ public class BTLockManager {
             return;
         }
         lock.close();
-        for (Runnable callback: callbacks) {
+        HashSet<Runnable> t = (HashSet<Runnable>) callbacks.clone();
+        for (Runnable callback: t) {
             try {
                 callback.run();
             } catch (NullPointerException e) {
@@ -134,6 +136,7 @@ public class BTLockManager {
     public static synchronized boolean writeCharacteristic(Data data, BluetoothGattCharacteristic characteristic) {
         if(!hasLock())
         {
+            Log.e(TAG, "writeCharacteristic: !hasLock");
             return false;
         }
         characteristic.setValue(data.byteArray());
@@ -149,10 +152,12 @@ public class BTLockManager {
      */
     @Nullable
     public static Data writeCharacteristicAndReadResponse(final Data data, final BluetoothGattCharacteristic characteristic) {
+        Log.d(TAG, "writeCharacteristicAndReadResponse");
         final Object lock = new Object();
         BTLock.GeneralCallback cb = new BTLock.GeneralCallback() {
             @Override
             public synchronized void callback(int status, BluetoothGattCharacteristic c) {
+                Log.i(TAG, "writeCharacteristicAndReadResponse: CHAR_CHANGE callback");
                 if (c.getUuid() != characteristic.getUuid())
                 {
                     return;
@@ -174,20 +179,20 @@ public class BTLockManager {
         };
         Data ret;
         sLock.registerCallback(BTLock.CB_CHAR_CHANGE, cb);
-        sLock.setCharacteristicNotification(characteristic, true);
         try {
             synchronized (lock) {
                 if (!writeCharacteristic(data, characteristic)) {
                     throw new Exception("Failed to write.");
                 }
-                lock.wait(5000);
+                Log.d(TAG, "writeCharacteristicAndReadResponse: start to wait");
+                lock.wait(6*1000);
+                Log.d(TAG, "writeCharacteristicAndReadResponse: wait finished");
             }
             ret = new Data(characteristic.getValue());
         } catch (Exception e) {
             Log.e(TAG, "Unable to write or read the response. Message: " + e.getMessage());
             ret = null;
         }
-        sLock.setCharacteristicNotification(characteristic, false);
         sLock.deregisterCallback(BTLock.CB_CHAR_CHANGE, cb);
         return ret;
     }

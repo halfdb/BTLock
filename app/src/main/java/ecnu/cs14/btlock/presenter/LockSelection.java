@@ -1,9 +1,12 @@
 package ecnu.cs14.btlock.presenter;
 
 import android.bluetooth.BluetoothDevice;
+import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.TextView;
 import ecnu.cs14.btlock.R;
 import ecnu.cs14.btlock.model.*;
 import ecnu.cs14.btlock.view.AbstractListActivity;
@@ -11,9 +14,15 @@ import ecnu.cs14.btlock.view.AbstractListActivity;
 import java.util.ArrayList;
 
 public class LockSelection implements AdapterView.OnItemClickListener {
+    static final String TAG = LockSelection.class.getSimpleName();
+
     public LockSelection(AbstractListActivity activity){
         mActivity = activity;
         mAdapter = new ArrayAdapter<>(mActivity, android.R.layout.simple_list_item_1, mDevices);
+
+        // initialize ListView
+        mActivity.getListView().setAdapter(mAdapter);
+        mActivity.getListView().setOnItemClickListener(LockSelection.this);
     }
 
     private AbstractListActivity mActivity;
@@ -28,7 +37,25 @@ public class LockSelection implements AdapterView.OnItemClickListener {
     public boolean startDiscovery(){
         // start bt
         if (!DeviceManager.isBtAvailable()) {
-            if(mActivity.yesNoBox(mActivity.getString(R.string.enable_bt_or_not), "")) {
+            final Object lock = new Object();
+            synchronized (lock) {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        mActivity.yesNoBox(mActivity.getString(R.string.enable_bt_or_not), "");
+                        synchronized (lock){
+                            Log.d(TAG, "run: notify");
+                            lock.notify();
+                        }
+                    }
+                }).start();
+                try {
+                    lock.wait();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            if(mActivity.getYesOrNo()) {
                 if(!DeviceManager.enableBt()){
                     return false;
                 }
@@ -37,10 +64,26 @@ public class LockSelection implements AdapterView.OnItemClickListener {
             }
         }
 
+        final LockInfoOperator lio = new LockInfoOperator(mActivity);
+
         // register a scan callback
         mCallback = new DeviceManager.ScanCallback(){
+            boolean connecting = false;
+
             @Override
             public void onFound(BluetoothDevice device, int rssi) {
+                Log.d(TAG, "onFound");
+
+                if(!connecting) {
+                    if (lio.isLockLogged(device.getAddress())) {
+                        final BTLock l = new BTLock(device, rssi);
+                        connectLock(l);
+                        connecting = true;
+                        mActivity.toast(mActivity.getString(R.string.auto_connect_to) + lio.getNickname(l));
+                        return;
+                    }
+                }
+
                 for (BTLock l : mDevices) {
                     String address = l.getAddress();
                     if (address.equals(device.getAddress())) {
@@ -61,16 +104,22 @@ public class LockSelection implements AdapterView.OnItemClickListener {
 
             @Override
             public void onStart() {
+                Log.d(TAG, "onStart");
                 // initialize the array adapter
                 mDevices.clear();
-                mActivity.getListView().setAdapter(mAdapter);
                 mAdapter.notifyDataSetChanged();
-                mActivity.getListView().setOnItemClickListener(LockSelection.this);
             }
 
             @Override
             public void onFinish() {
+                Log.d(TAG, "onFinish");
                 DeviceManager.deregisterScanCallback(this);
+            }
+
+            @Override
+            public void onError() {
+                DeviceManager.deregisterScanCallback(this);
+                mActivity.finish();
             }
         };
         DeviceManager.registerScanCallback(mCallback);
@@ -97,14 +146,20 @@ public class LockSelection implements AdapterView.OnItemClickListener {
         connectLock((BTLock) parent.getItemAtPosition(position));
     }
 
-    private void connectLock(BTLock lock) {
-        synchronized (LockSelection.class) {
-            lock.connect(mActivity);
-        }
-        mActivity.finish();
+    private void connectLock(final BTLock lock) {
+        mActivity.startWaiting();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                lock.connect(mActivity);
+                mActivity.stopWaiting();
+                mActivity.finish();
+            }
+        }).start();
     }
 
     public void finish(){
         DeviceManager.deregisterScanCallback(mCallback);
+        DeviceManager.cancelDiscovery(mActivity);
     }
 }

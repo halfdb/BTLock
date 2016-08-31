@@ -8,7 +8,7 @@ import java.util.*;
 
 class BTLock extends BluetoothGattCallback {
 
-    final private static String TAG = BTLock.class.getClass().getSimpleName();
+    final private static String TAG = BTLock.class.getSimpleName();
 
     private BTLock() { }
 
@@ -29,12 +29,13 @@ class BTLock extends BluetoothGattCallback {
         mDevice = device;
     }
 
-    public BluetoothGatt connectGatt(Context context, BTLockCallback callback) throws Exception{
+    public BluetoothGatt connectGatt(Context context) throws Exception{
         mGatt = mDevice.connectGatt(context, false, this);
-        if(null != mGatt){
-            callback.onGattConnect(mGatt);
-        } else {
+        if(null == mGatt) {
             throw new Exception("Failed to connect the gatt.");
+        }
+        if (mGatt.getServices().size() != 0) {
+            onServicesDiscovered(mGatt, 0);
         }
         return mGatt;
     }
@@ -50,10 +51,11 @@ class BTLock extends BluetoothGattCallback {
     public BluetoothGattCharacteristic getmMainCharacteristic() { return mMainCharacteristic; }
 
     public void close(){
+        Log.d(TAG, "close");
         BluetoothGatt gatt = mGatt;
         mGatt = null;
         if (gatt != null) {
-            gatt.close();
+            gatt.disconnect();
         }
         mService = null;
         mDevice = null;
@@ -61,14 +63,6 @@ class BTLock extends BluetoothGattCallback {
         for (HashSet s : callbackLists) {
             s.clear();
         }
-    }
-
-    public boolean setCharacteristicNotification(BluetoothGattCharacteristic characteristic, boolean enable){
-        boolean ret = mGatt.setCharacteristicNotification(characteristic, enable);
-        if(!ret){
-            Log.w(TAG, "Characteristic notification set failed.");
-        }
-        return ret;
     }
 
     public BluetoothGattService getService() throws Exception {
@@ -97,7 +91,7 @@ class BTLock extends BluetoothGattCallback {
     public static final int CB_WRITE_COMPLETE = 4;
     public static final int CB_IS_LOCK = 5;
     private static final int CB_COUNT = 6;
-    private HashSet<?>[] callbackLists = {
+    private static HashSet<?>[] callbackLists = {
             new HashSet<GeneralCallback>(),
             new HashSet<GeneralCallback>(),
             new HashSet<GeneralCallback>(),
@@ -138,6 +132,9 @@ class BTLock extends BluetoothGattCallback {
     public void onConnectionStateChange(BluetoothGatt gatt, int status,
                                         int newState) {
         super.onConnectionStateChange(gatt, status, newState);
+        if(newState == BluetoothProfile.STATE_CONNECTED) {
+            gatt.discoverServices();
+        }
         for(Object cb : callbackLists[CB_CONNECTION_STATE_CHANGE]){
             ((GeneralCallback)cb).callback(newState, null);
         }
@@ -152,7 +149,6 @@ class BTLock extends BluetoothGattCallback {
      */
     @Override
     public void onServicesDiscovered(BluetoothGatt gatt, int status) {
-        super.onServicesDiscovered(gatt, status);
         if (mService != null) {
             return;
         }
@@ -172,6 +168,7 @@ class BTLock extends BluetoothGattCallback {
             for (BluetoothGattCharacteristic c: mService.getCharacteristics()) {
                 if((c.getUuid().getMostSignificantBits() & MASK_UUID_MSD) == MAIN_CHAR_UUID_MSD) {
                     mMainCharacteristic = c;
+                    mGatt.setCharacteristicNotification(c, true);
                     break;
                 }
             }
@@ -260,31 +257,33 @@ class BTLock extends BluetoothGattCallback {
         GeneralCallback cb = new GeneralCallback(){
             @Override
             public void callback(int status, BluetoothGattCharacteristic characteristic) {
+                Log.d(TAG, "writeChar: callback: write complete");
                 result = status;
                 synchronized (BTLock.this) {
                     BTLock.this.notify();
                 }
             }
         };
-        registerCallback(CB_WRITE_COMPLETE, cb);
+//        registerCallback(CB_WRITE_COMPLETE, cb);
         boolean ret = mGatt.writeCharacteristic(characteristic);
-        if(ret){
-            ret = mGatt.executeReliableWrite();
-            if (ret) {
-                try {
-                    wait(3000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                    ret = false;
-                }
-                if (ret) {
-                    if (cb.result != BluetoothGatt.GATT_SUCCESS) {
-                        ret = false;
-                    }
-                }
-            }
-        }
-        deregisterCallback(CB_WRITE_COMPLETE, cb);
+//        if(ret){
+//            Log.d(TAG, "writeCharacteristic: trying to execute reliable write");
+//            ret = mGatt.beginReliableWrite();
+//            if (ret) {
+//                try {
+//                    wait(3000);
+//                } catch (InterruptedException e) {
+//                    e.printStackTrace();
+//                    ret = false;
+//                }
+//                if (ret) {
+//                    if (cb.result != BluetoothGatt.GATT_SUCCESS) {
+//                        ret = false;
+//                    }
+//                }
+//            }
+//        }
+//        deregisterCallback(CB_WRITE_COMPLETE, cb);
         return ret;
     }
 

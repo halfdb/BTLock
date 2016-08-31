@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 
 public class Password extends ArrayList<Byte> implements Cloneable {
-    public static final int SIZE = 16;
+    public static final int SIZE = 15;
     
     /**
      * Constructs a new {@code ArrayList} instance with zero initial capacity.
@@ -17,7 +17,7 @@ public class Password extends ArrayList<Byte> implements Cloneable {
         super(SIZE);
         String[] strings = s.split(" ");
         for (int i = 0; i < SIZE; i++) {
-            set(i, Byte.valueOf(strings[i]));
+            add(i, Byte.valueOf(strings[i]));
         }
     }
 
@@ -53,7 +53,7 @@ public class Password extends ArrayList<Byte> implements Cloneable {
             throw new Exception("Wrong size.");
         }
         for (int i = 0; i < SIZE; i++) {
-            set(i, array[i]);
+            add(i, array[i]);
         }
     }
 
@@ -64,7 +64,7 @@ public class Password extends ArrayList<Byte> implements Cloneable {
             throw new Exception("Wrong size.");
         }
         for (int i = 0; i < SIZE; i++) {
-            set(i, array[i]);
+            add(i, array[i]);
         }
     }
 
@@ -89,7 +89,7 @@ public class Password extends ArrayList<Byte> implements Cloneable {
     public static Password extractFromData(Data data) {
         try {
             byte[] bytes = new byte[SIZE];
-            int i = SIZE - Data.SIZE, i0 = i;
+            int i = Data.SIZE - SIZE, i0 = i;
             for ( ;   i < Data.SIZE ;  i++) {
                 bytes[i - i0] = data.get(i);
             }

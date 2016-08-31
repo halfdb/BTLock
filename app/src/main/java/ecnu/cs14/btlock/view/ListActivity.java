@@ -2,18 +2,23 @@ package ecnu.cs14.btlock.view;
 
 import android.os.Bundle;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import ecnu.cs14.btlock.R;
 import ecnu.cs14.btlock.presenter.LockSelection;
 
 public class ListActivity extends AbstractListActivity {
 
-    private final ListView list = (ListView) findViewById(R.id.deviceList);
+    private ListView list;
+    private ProgressBar progressBar;
     private LockSelection presenter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_list);
+        list = (ListView) findViewById(R.id.deviceList);
+        progressBar = (ProgressBar) findViewById(R.id.list_progressBar);
+        list.setEmptyView(progressBar);
     }
 
     /**
@@ -40,9 +45,14 @@ public class ListActivity extends AbstractListActivity {
     protected void onResume() {
         super.onResume();
         presenter = new LockSelection(this);
-        if(!presenter.startDiscovery()){
-            finish();
-        }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                if (!presenter.startDiscovery()) {
+                    finish();
+                }
+            }
+        }).start();
     }
 
     /**
@@ -94,11 +104,6 @@ public class ListActivity extends AbstractListActivity {
         return list;
     }
 
-    /**
-     * Call this when your activity is done and should be closed.  The
-     * ActivityResult is propagated back to whoever launched you via
-     * onActivityResult().
-     */
     @Override
     public void finish() {
         super.finish();

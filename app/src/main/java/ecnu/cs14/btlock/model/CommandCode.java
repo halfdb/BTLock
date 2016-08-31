@@ -99,6 +99,9 @@ public final class CommandCode {
         }
         public static final byte CMD_INQUIRY_ACK = rawBinary(0x90);
 
+        public static final byte CMD_ASK_VERI = 0x01;
+        public static final byte CMD_ASK_VERI_ACK = rawBinary(0x81);
+
         private account() { }
     }
 }

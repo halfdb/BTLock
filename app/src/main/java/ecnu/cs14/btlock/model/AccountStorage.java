@@ -47,6 +47,20 @@ public class AccountStorage {
         return AccountFactory.newInstance(uid, password);
     }
 
+    public void removeAllStoredAccount() {
+        Set<String> uids = mSetting.getStringSet(KEY_UIDS, null);
+        if (uids == null) {
+            return;
+        }
+        SharedPreferences.Editor editor = mSetting.edit();
+        for (String uidString: uids) {
+            byte uid = Byte.valueOf(uidString);
+            String key = keyForAccount(uid);
+            editor.remove(key);
+        }
+        editor.remove(KEY_UIDS).apply();
+    }
+
     public void removeStoredAccount(byte uid) {
         Set<String> uids = mSetting.getStringSet(KEY_UIDS, null);
         if (uids == null) {

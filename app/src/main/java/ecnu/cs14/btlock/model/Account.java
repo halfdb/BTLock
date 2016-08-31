@@ -4,7 +4,7 @@ public class Account {
     private byte mUid;
     private Password mPassword;
 
-    public Account(byte uid, Password password) {
+    Account(byte uid, Password password) {
         mUid = uid;
         mPassword = (Password) password.clone();
     }

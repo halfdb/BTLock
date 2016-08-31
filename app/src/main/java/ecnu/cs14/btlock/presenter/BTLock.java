@@ -4,14 +4,18 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.content.Context;
 import android.support.annotation.NonNull;
+import android.util.Log;
 import ecnu.cs14.btlock.model.BTLockManager;
 
 class BTLock implements Comparable{
+    static final String TAG = BTLock.class.getSimpleName();
+
     private static BTLock sCurrentLock;
 
     private static Runnable disconnectionCallback = new Runnable() {
         @Override
         public void run() {
+            Log.d(TAG, "disconnectionCallback");
             sCurrentLock = null;
             BTLockManager.deregisterDisconnectionCallback(this);
         }
@@ -28,7 +32,7 @@ class BTLock implements Comparable{
         return (sCurrentLock != null);
     }
 
-    public static BTLock getCurrentLock() {
+    public synchronized static BTLock getCurrentLock() {
 //        updateHasLock();
         return sCurrentLock;
     }
@@ -101,10 +105,17 @@ class BTLock implements Comparable{
     }
 
     public void connect(Context context) {
-        BTLockManager.connectLock(mDevice, context);
-        sCurrentLock = this;
         BTLockManager.registerDisconnectionCallback(disconnectionCallback);
+        synchronized (BTLock.class) {
+            BTLockManager.connectLock(mDevice, context);
+            sCurrentLock = this;
+        }
+    }
 
-
+    public static void disconnect() {
+        if (hasLock()) {
+            sCurrentLock = null;
+            BTLockManager.disconnectLock();
+        }
     }
 }

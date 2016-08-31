@@ -5,13 +5,16 @@ import java.util.Collection;
 
 public class Data extends ArrayList<Byte> implements Cloneable {
 
-    public static final int SIZE = 17;
+    public static final int SIZE = 16;
 
     /**
      * Constructs a new {@code ArrayList} instance with zero initial capacity.
      */
     public Data() {
         super(SIZE);
+        while (size()<SIZE) {
+            add((byte)0);
+        }
     }
 
     /**
@@ -35,7 +38,7 @@ public class Data extends ArrayList<Byte> implements Cloneable {
             throw new Exception("Wrong size.");
         }
         for (int i = 0; i < SIZE; i++) {
-            set(i, array[i]);
+            add(i, array[i]);
         }
     }
 
@@ -46,7 +49,7 @@ public class Data extends ArrayList<Byte> implements Cloneable {
             throw new Exception("Wrong size.");
         }
         for (int i = 0; i < SIZE; i++) {
-            set(i, array[i]);
+            add(i, array[i]);
         }
     }
 

@@ -5,7 +5,7 @@ import android.util.Log;
 public class User extends Account {
     private static final String TAG = User.class.getSimpleName();
 
-    public User(byte uid, Password password) {
+    User(byte uid, Password password) {
         super(uid, password);
     }
 

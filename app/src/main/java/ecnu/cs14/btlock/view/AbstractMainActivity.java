@@ -8,4 +8,6 @@ public abstract class AbstractMainActivity extends InteractiveActivity{
     public abstract void enableUnlock();
     public abstract void disableUnlock();
     public abstract void waitUnlocking();
+    public abstract int getLockChoice();
+    public abstract int chooseShare(String[] nicknames);
 }

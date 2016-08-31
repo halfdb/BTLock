@@ -55,7 +55,18 @@ public class InitializeOperator implements Task.Handler {
     }
 
     private boolean fillVerification(Data data){
-        // TODO
+        Data command = new Data();
+        command.set(0, CommandCode.account.CMD_ASK_VERI);
+        Data expected = new Data();
+        expected.set(0, CommandCode.account.CMD_ASK_VERI_ACK);
+        if(!new Task(command, expected, null).execute(false)) {
+            return false;
+        }
+        mActivity.inquireVerification();
+        String input = mActivity.getInputText();
+        for (int i = 1; i < 7; i++) {
+            data.set(i, (byte)input.charAt(i-1));
+        }
         return true;
     }
 
@@ -88,7 +99,7 @@ public class InitializeOperator implements Task.Handler {
 
     private User userFromResponse(Data response) {
         byte uidMask = (byte) ~mMask.get(0);
-        byte uid = (byte) (response.get(0) & uidMask);
+        byte uid = CommandCode.uid.getUidOf((byte) (response.get(0) & uidMask), 0);
         Password password = Password.extractFromData(response);
         return new User(uid, password);
     }
@@ -101,6 +112,7 @@ public class InitializeOperator implements Task.Handler {
             @Override
             public void run() {
                 new AccountOperator(mAS).fillGuests(user);
+                mActivity.finish();
             }
         }).start();
     }

@@ -4,5 +4,6 @@ import ecnu.cs14.btlock.presenter.InitializeOperator;
 
 public abstract class AbstractInitActivity extends InteractiveActivity {
     public abstract void initializeFinished(InitializeOperator.InitResult result);
+    public abstract String inquireVerification();
     public abstract String inquireNickname();
 }

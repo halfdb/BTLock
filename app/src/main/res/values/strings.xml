@@ -1,14 +1,14 @@
 <resources>
     <string name="app_name">BTLock</string>
-    <string name="no_lock_available">未连接至蓝牙锁</string>
+    <string name="no_lock_connected">未连接至蓝牙锁</string>
     <string name="lock_disconnected">蓝牙锁已断开</string>
     <string name="unlock_failure">开锁失败</string>
     <string name="enable_bt_or_not">是否开启蓝牙？</string>
     <string name="account_setting_new_pwd">更新密码</string>
-    <string name="account_setting_delete_user">删除用户</string>
+    <string name="account_setting_delete_user">删除其他用户</string>
     <string name="error">错误</string>
     <string name="unlock">解锁</string>
-    <string name="open_device_list">设备列表</string>
+    <string name="open_device_list">搜索设备</string>
     <string name="account_management">账户管理</string>
     <string name="choose_user_to_delete">选择要删除的用户</string>
     <string name="make_a_nickname">给门锁做一个备注</string>
@@ -16,5 +16,14 @@
     <string name="executing">执行中</string>
     <string name="please_wait">请稍候…</string>
     <string name="user_num_is">用户号是</string>
-    <string name="view_user_num">查看用户号</string>
+    <string name="view_user_num">查看本用户号</string>
+    <string name="please_input_verification">请输入验证内容</string>
+    <string name="auto_connect_to">自动连接至</string>
+    <string name="choose_lock_to_share">选择分享密钥的门锁</string>
+    <string name="share_hint">复制本段文字，打开蓝牙锁客户端~</string>
+    <string name="share_guest_key">分享临时密钥</string>
+    <string name="forget_this_lock">不再保存此门锁</string>
+    <string name="delete_remote_account_advice">门锁侧对应账户不会被删除，建议用其他账户删除原先账户</string>
+    <string name="temp_key_added">临时密钥已添加</string>
+    <string name="no_lock_stored">无保存门锁</string>
 </resources>

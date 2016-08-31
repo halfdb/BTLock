@@ -101,7 +101,7 @@ public class InitializeOperator implements Task.Handler {
         byte uidMask = (byte) ~mMask.get(0);
         byte uid = CommandCode.uid.getUidOf((byte) (response.get(0) & uidMask), 0);
         Password password = Password.extractFromData(response);
-        return new User(uid, password);
+        return (User) AccountFactory.newInstance(uid, password);
     }
 
     @Override
